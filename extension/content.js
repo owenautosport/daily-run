@@ -121,10 +121,16 @@
   }
 
   // ---------- results ----------
+  // One Share can reach us more than once (selection + clipboard event), so
+  // ignore a repeat of the same result within a few seconds.
+  let last = { key: '', at: 0 };
   window.addEventListener('message', async (e) => {
     if (e.source !== window || !e.data || e.data.__dailyRun !== true) return;
     const hit = detectGame(String(e.data.text));
     if (!hit) return;
+    const key = `${hit.game.id}|${hit.result.puzzle}|${hit.result.score}|${hit.result.grid}`;
+    if (key === last.key && Date.now() - last.at < 5000) return;
+    last = { key, at: Date.now() };
     const reply = await ask({ type: 'result', gameId: hit.game.id, parsed: hit.result });
     if (!reply) return;
     card.classList.remove('min');

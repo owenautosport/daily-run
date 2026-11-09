@@ -39,16 +39,27 @@
     };
   }
 
-  // Older games copy through a hidden textarea + execCommand('copy').
+  // Older games (and the copy-to-clipboard library, which Worldle uses) select
+  // some hidden text and call execCommand('copy'). Send both the page selection
+  // and any selected text-box text: the game's own guess box often still has
+  // focus, so the selection alone isn't always the share text.
   const exec = document.execCommand.bind(document);
   document.execCommand = function (cmd, ...rest) {
     if (String(cmd).toLowerCase() === 'copy') {
+      send(String(window.getSelection()));
       const el = document.activeElement;
-      const text = el && typeof el.value === 'string'
-        ? el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? el.value.length)
-        : String(window.getSelection());
-      send(text);
+      if (el && typeof el.value === 'string' && el.selectionStart !== el.selectionEnd) {
+        send(el.value.slice(el.selectionStart, el.selectionEnd));
+      }
     }
     return exec(cmd, ...rest);
+  };
+
+  // Copy handlers that write the text straight into the clipboard event
+  // (e.clipboardData.setData('text/plain', text)).
+  const setData = DataTransfer.prototype.setData;
+  DataTransfer.prototype.setData = function (type, data) {
+    if (/^text(\/plain)?$/i.test(String(type))) send(data);
+    return setData.call(this, type, data);
   };
 })();
