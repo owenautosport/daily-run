@@ -95,3 +95,71 @@ test('full run streak needs every game each day', () => {
   ];
   assert.equal(fullRunStreak(['wordle', 'connections'], results, '2026-11-08'), 2);
 });
+
+// Share formats below are copied from each game's own share code (Nov 2026).
+
+test('worldle win uses the date in the share text', () => {
+  const r = byId.worldle.parse('#Worldle #1388 (09.11.2026) 3/6 (100%)\n🔥 4\n🟩🟩🟩🟨⬜↗️\n🟩🟩🟩🟩🟨↘️\n🟩🟩🟩🟩🟩🎉\n\nhttps://worldle.teuteuf.fr');
+  assert.equal(r.date, '2026-11-09');
+  assert.equal(r.won, true);
+  assert.equal(r.score, 3);
+  assert.equal(r.grid.split('\n').length, 3);
+});
+
+test('worldle loss (X and the give-up face)', () => {
+  assert.equal(byId.worldle.parse('#Worldle #1388 (09.11.2026) X/6 (93%)').won, false);
+  const r = byId.worldle.parse('#Worldle #1388 (09.11.2026) 😛/6 (93%) 🙈');
+  assert.equal(r.won, false);
+  assert.equal(r.score, 7);
+});
+
+test('globle', () => {
+  const r = byId.globle.parse('🌎 Nov 9, 2026 🌍\n🔥 3 | Avg. Guesses: 5.2\n🟧🟥🟥🟩 = 4\n\nhttps://globle-game.com\n#globle');
+  assert.equal(r.date, '2026-11-09');
+  assert.equal(r.score, 4);
+  assert.equal(r.won, true);
+  assert.equal(r.grid, '🟧🟥🟥🟩');
+  assert.equal(byId.globle.bucketOf(r), '4–6');
+});
+
+test('globle not played today ("--") is rejected', () => {
+  assert.equal(byId.globle.parse('🌎 Nov 8, 2026 🌍\n🔥 0 | Avg. Guesses: --\n-- = --\n\nhttps://globle-game.com\n#globle'), null);
+});
+
+test('framed win and miss, ignores side challenges', () => {
+  const w = byId.framed.parse('Framed #1704\n🎥 🟥 🟥 🟩 ⬛ ⬛ ⬛\n\nhttps://framed.wtf');
+  assert.equal(w.puzzle, 1704);
+  assert.equal(w.won, true);
+  assert.equal(w.score, 3);
+  const l = byId.framed.parse('Framed #1704\n🎥 🟥 🟥 🟥 🟥 🟥 🟥\n\nhttps://framed.wtf');
+  assert.equal(l.won, false);
+  assert.equal(byId.framed.parse('Framed - One Frame Challenge #300\n🎥 🟩\n\nhttps://framed.wtf/one-frame'), null);
+});
+
+test('nerdle win and loss, ignores mini nerdle', () => {
+  const w = byId.nerdle.parse('nerdlegame 1755 3/6\n\n🟪⬛⬛🟩⬛🟪⬛⬛\n🟩🟩🟪🟩⬛🟩🟪🟩\n🟩🟩🟩🟩🟩🟩🟩🟩');
+  assert.equal(w.puzzle, 1755);
+  assert.equal(w.won, true);
+  assert.equal(w.score, 3);
+  const rows = Array(6).fill('🟩🟩🟪🟩⬛🟩🟪🟩').join('\n');
+  const l = byId.nerdle.parse(`nerdlegame 1755 6/6\n\n${rows}`);
+  assert.equal(l.won, false);
+  assert.equal(byId.nerdle.parse('mini nerdlegame 1755 3/6\n\n🟩🟩🟩🟩🟩🟩'), null);
+});
+
+test('puzzle numbers for Framed and Nerdle match the sites on 9 Nov 2026', () => {
+  assert.equal(byId.framed.todaysPuzzle(new Date(2026, 10, 9)), 1704);
+  assert.equal(byId.nerdle.todaysPuzzle(new Date(2026, 10, 9)), 1755);
+});
+
+test('detectGame tells all six apart', () => {
+  const samples = {
+    wordle: 'Wordle 1,969 4/6\n\n🟩🟩🟩🟩🟩',
+    connections: 'Connections\nPuzzle #1247\n🟨🟨🟨🟨\n🟩🟩🟩🟩\n🟦🟦🟦🟦\n🟪🟪🟪🟪',
+    worldle: '#Worldle #1388 (09.11.2026) 2/6 (100%)\n🟩🟩🟩🟩🟨↗️\n🟩🟩🟩🟩🟩🎉',
+    globle: '🌎 Nov 9, 2026 🌍\n🔥 3 | Avg. Guesses: 5.2\n🟧🟩 = 2\n\nhttps://globle-game.com\n#globle',
+    framed: 'Framed #1704\n🎥 🟩 ⬛ ⬛ ⬛ ⬛ ⬛\n\nhttps://framed.wtf',
+    nerdle: 'nerdlegame 1755 2/6\n\n🟪⬛⬛🟩⬛🟪⬛⬛\n🟩🟩🟩🟩🟩🟩🟩🟩',
+  };
+  for (const [id, text] of Object.entries(samples)) assert.equal(detectGame(text)?.game.id, id, id);
+});

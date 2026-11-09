@@ -20,30 +20,42 @@ function save() {
 const today = () => isoDate();
 const resultFor = (gameId, date) => state.results.find((r) => r.game === gameId && r.date === date);
 
-// The share text carries a puzzle number; turn it into the day it belongs to,
-// so pasting yesterday's game late still lands on yesterday.
-function dateForPuzzle(game, puzzle) {
-  const offset = game.todaysPuzzle(new Date()) - puzzle;
-  const d = new Date();
-  d.setDate(d.getDate() - Math.max(0, offset));
-  return { date: isoDate(d), offset };
+// Which games are in your run (Settings). Default: all of them.
+const activeGames = () => (state.enabled ? GAMES.filter((g) => state.enabled.includes(g.id)) : GAMES);
+
+// Work out which day a result belongs to, so pasting yesterday's game late
+// still lands on yesterday. Some games put the date in the share text; for the
+// rest we count back from today's puzzle number.
+function dateForResult(game, parsed) {
+  if (parsed.date) {
+    const offset = Math.round((new Date(today()) - new Date(parsed.date)) / 86400000);
+    return { date: offset < 0 ? today() : parsed.date, offset };
+  }
+  if (game.todaysPuzzle && parsed.puzzle != null) {
+    const offset = game.todaysPuzzle(new Date()) - parsed.puzzle;
+    const d = new Date();
+    d.setDate(d.getDate() - Math.max(0, offset));
+    return { date: isoDate(d), offset };
+  }
+  return { date: today(), offset: 0 };
 }
 
 function record(game, parsed) {
-  const { date, offset } = dateForPuzzle(game, parsed.puzzle);
+  const { date, offset } = dateForResult(game, parsed);
   if (offset > 7 || offset < -1) {
-    if (!confirm(`That's ${game.name} #${parsed.puzzle}, but today's is #${game.todaysPuzzle(new Date())}. Save it anyway (as ${date})?`)) return false;
+    if (!confirm(`That ${game.name} result is from ${date}, not today. Save it anyway?`)) return false;
   }
   const existing = resultFor(game.id, date);
   if (existing) {
-    if (existing.puzzle === parsed.puzzle && existing.grid === parsed.grid) {
+    if (existing.score === parsed.score && existing.grid === parsed.grid) {
       toast(`Already saved ${game.name} for ${date === today() ? 'today' : date}`);
       return true;
     }
     if (!confirm(`You already have a ${game.name} result for ${date}. Replace it?`)) return false;
     state.results = state.results.filter((r) => r !== existing);
   }
-  state.results.push({ game: game.id, date, savedAt: new Date().toISOString(), ...parsed });
+  const { date: _ignored, ...rest } = parsed;
+  state.results.push({ game: game.id, date, savedAt: new Date().toISOString(), ...rest });
   save();
   toast(`${game.name}: ${game.describe(parsed)}${date !== today() ? ` (saved to ${date})` : ''}`);
   return true;
@@ -73,42 +85,134 @@ function toast(msg) {
 const openPaste = new Set(); // game ids whose paste box is expanded
 
 function openGame(game) {
+  if (game.embed) return openPlayer(game);
   window.open(game.url, '_blank', 'noopener');
   openPaste.add(game.id);
   renderToday();
 }
 
+const nextUnplayed = () => activeGames().find((g) => !resultFor(g.id, today()));
+
+// ---------- In-page player (for games that allow being embedded) ----------
+let playing = null;
+
+function openPlayer(game) {
+  playing = game;
+  const games = activeGames();
+  $('#player-name').textContent = game.name;
+  $('#player-step').textContent = `${games.indexOf(game) + 1} of ${games.length}`;
+  $('#player-newtab').href = game.url;
+  $('#player-paste').hidden = true;
+  $('#player-text').value = '';
+  $('#player-error').hidden = true;
+  const frame = $('#player-frame');
+  if (frame.dataset.game !== game.id) {
+    frame.src = game.url;
+    frame.dataset.game = game.id;
+    frame.title = game.name;
+  }
+  $('#player').hidden = false;
+  document.body.classList.add('playing');
+}
+
+function closePlayer() {
+  playing = null;
+  $('#player').hidden = true;
+  document.body.classList.remove('playing');
+  const frame = $('#player-frame');
+  frame.src = 'about:blank';
+  delete frame.dataset.game;
+  renderAll();
+}
+
+// After logging a result in the player: go straight to the next game if it can
+// be embedded too; otherwise back to the run list, where "Next up" opens it.
+function afterPlayerResult() {
+  const next = nextUnplayed();
+  if (next?.embed) {
+    setTimeout(() => openPlayer(next), 600);
+  } else {
+    closePlayer();
+  }
+}
+
+function logFromText(text) {
+  const game = playing;
+  const parsed = game.parse(text);
+  if (parsed) {
+    if (record(game, parsed)) afterPlayerResult();
+    return true;
+  }
+  const other = detectGame(text);
+  if (other) {
+    if (record(other.game, other.result)) renderAll();
+    return true;
+  }
+  return false;
+}
+
+async function logResult() {
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {}
+  if (text && logFromText(text)) return;
+  // Couldn't read the clipboard (or it held something else): paste by hand.
+  $('#player-paste').hidden = false;
+  const err = $('#player-error');
+  err.hidden = !text;
+  err.textContent = text ? `That doesn't look like a ${playing.name} result. Tap the game's Share button first.` : '';
+  $('#player-text').focus();
+}
+
+$('#player-back').onclick = closePlayer;
+$('#player-log').onclick = logResult;
+$('#player-save').onclick = () => {
+  const text = $('#player-text').value;
+  if (!logFromText(text)) {
+    const err = $('#player-error');
+    err.textContent = `That doesn't look like a ${playing.name} result. Use the game's Share button and paste the whole thing.`;
+    err.hidden = false;
+  }
+};
+$('#player-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#player-save').click(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && playing) closePlayer(); });
+
 // ---------- Today ----------
 function renderToday() {
   const d = today();
+  const games = activeGames();
   const list = $('#game-list');
   list.replaceChildren();
   let done = 0;
 
-  GAMES.forEach((game, i) => {
+  games.forEach((game, i) => {
     const r = resultFor(game.id, d);
     if (r) done++;
     const li = el('li', { class: `game${r ? (r.won ? ' done' : ' lost') : ''}` });
 
     const actions = el('div', { class: 'game-actions' });
     if (!r) {
-      actions.append(
-        el('button', { class: 'primary', onclick: () => openGame(game) }, 'Play'),
-        el('button', {
+      actions.append(el('button', { class: 'primary', onclick: () => openGame(game) }, game.embed ? 'Play here' : 'Play ↗'));
+      if (!game.embed) {
+        actions.append(el('button', {
           class: 'secondary',
           onclick: () => { openPaste.has(game.id) ? openPaste.delete(game.id) : openPaste.add(game.id); renderToday(); },
-        }, 'Paste result'),
-      );
+        }, 'Paste result'));
+      }
     } else {
-      actions.append(el('a', { class: 'secondary', href: game.url, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, 'Open'));
+      actions.append(game.embed
+        ? el('button', { class: 'secondary', onclick: () => openPlayer(game) }, 'Open')
+        : el('a', { class: 'secondary', href: game.url, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, 'Open ↗'));
     }
 
+    const number = game.todaysPuzzle ? `#${game.todaysPuzzle(new Date())} · ` : '';
     li.append(
       el('div', { class: 'game-head' },
         el('div', { class: 'game-num' }, r ? (r.won ? '✓' : '✕') : String(i + 1)),
         el('div', { class: 'game-title' },
           el('h3', {}, game.name),
-          el('p', { class: 'muted' }, r ? game.describe(r) : `#${game.todaysPuzzle(new Date())} · ${game.blurb}`),
+          el('p', { class: 'muted' }, r ? game.describe(r) : `${number}${game.blurb}`),
         ),
         actions,
       ),
@@ -131,15 +235,19 @@ function renderToday() {
     list.append(li);
   });
 
-  const total = GAMES.length;
-  $('#progress-fill').style.width = `${(done / total) * 100}%`;
+  const total = games.length;
+  $('#progress-fill').style.width = total ? `${(done / total) * 100}%` : '0';
   $('#progress-text').textContent = `${done} of ${total} done`;
 
-  const next = GAMES.find((g) => !resultFor(g.id, d));
+  const next = nextUnplayed();
   const btn = $('#start-run');
-  if (next) {
+  if (!total) {
+    btn.disabled = true;
+    btn.textContent = 'Pick some games in Settings';
+    btn.onclick = null;
+  } else if (next) {
     btn.disabled = false;
-    btn.textContent = done === 0 ? `Start today's run → ${next.name}` : `Next up → ${next.name}`;
+    btn.textContent = `${done === 0 ? 'Start today\'s run' : 'Next up'} → ${next.name}${next.embed ? '' : ' ↗'}`;
     btn.onclick = () => openGame(next);
   } else {
     btn.disabled = true;
@@ -147,7 +255,7 @@ function renderToday() {
     btn.onclick = null;
   }
 
-  const rs = fullRunStreak(GAMES.map((g) => g.id), state.results);
+  const rs = fullRunStreak(games.map((g) => g.id), state.results);
   $('#run-streak').replaceChildren(String(rs), el('small', {}, rs === 1 ? 'day full run' : 'days full run'));
 }
 
@@ -193,12 +301,17 @@ function pasteBox(game) {
 document.addEventListener('paste', (e) => {
   if (e.target.closest('textarea, input')) return;
   const text = e.clipboardData?.getData('text') || '';
+  if (playing) {
+    e.preventDefault();
+    if (!logFromText(text)) toast(`That doesn't look like a ${playing.name} result`);
+    return;
+  }
   const hit = detectGame(text);
   if (hit) {
     e.preventDefault();
     if (record(hit.game, hit.result)) { openPaste.delete(hit.game.id); renderAll(); }
   } else if (text.trim()) {
-    toast('Couldn’t spot a Wordle or Connections result in that');
+    toast('Couldn’t spot a game result in that');
   }
 });
 
@@ -210,7 +323,9 @@ function renderStats() {
     root.append(el('p', { class: 'empty muted' }, 'No games logged yet. Finish one and your stats show up here.'));
     return;
   }
-  for (const game of GAMES) {
+  const active = new Set(activeGames().map((g) => g.id));
+  const shown = GAMES.filter((g) => active.has(g.id) || state.results.some((r) => r.game === g.id));
+  for (const game of shown) {
     const s = gameStats(game, state.results);
     const maxCount = Math.max(1, ...Object.values(s.dist));
     const todays = resultFor(game.id, today());
@@ -266,7 +381,7 @@ function renderHistory() {
         const g = byId[r.game];
         return el('li', {},
           el('span', { class: 'when' }, r.date),
-          el('span', { class: 'what' }, el('b', {}, g?.name ?? r.game), ` #${r.puzzle} · ${g ? g.describe(r) : ''}`),
+          el('span', { class: 'what' }, el('b', {}, g?.name ?? r.game), `${r.puzzle != null ? ` #${r.puzzle}` : ''} · ${g ? g.describe(r) : ''}`),
           el('button', {
             title: 'Delete', 'aria-label': `Delete ${g?.name} ${r.date}`,
             onclick: () => {
@@ -283,6 +398,27 @@ function renderHistory() {
 }
 
 // ---------- Settings ----------
+function renderGamePicker() {
+  const on = new Set(activeGames().map((g) => g.id));
+  $('#game-picker').replaceChildren(
+    ...GAMES.map((g) =>
+      el('label', { class: 'pick' },
+        el('input', {
+          type: 'checkbox', checked: on.has(g.id) ? '' : false,
+          onchange: (e) => {
+            const ids = new Set(activeGames().map((x) => x.id));
+            e.target.checked ? ids.add(g.id) : ids.delete(g.id);
+            state.enabled = GAMES.filter((x) => ids.has(x.id)).map((x) => x.id);
+            save();
+            renderAll();
+          },
+        }),
+        el('span', {}, el('b', {}, g.name), el('small', { class: 'muted' }, g.embed ? 'Plays here' : 'Opens a new tab')),
+      ),
+    ),
+  );
+}
+
 $('#export').onclick = () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const a = el('a', { href: URL.createObjectURL(blob), download: `daily-run-${today()}.json` });
@@ -299,6 +435,7 @@ $('#import').onchange = async (e) => {
     const key = (r) => `${r.game}|${r.date}`;
     const incoming = new Set(data.results.map(key));
     state.results = [...state.results.filter((r) => !incoming.has(key(r))), ...data.results];
+    if (Array.isArray(data.enabled)) state.enabled = data.enabled;
     save();
     renderAll();
     toast(`Imported ${data.results.length} results`);
@@ -309,7 +446,7 @@ $('#import').onchange = async (e) => {
 };
 $('#reset').onclick = () => {
   if (!confirm('Delete every saved result? This can’t be undone (export a backup first if unsure).')) return;
-  state = { results: [] };
+  state = { results: [], enabled: state.enabled };
   save();
   renderAll();
 };
@@ -327,6 +464,7 @@ function renderAll() {
   renderToday();
   renderStats();
   renderHistory();
+  renderGamePicker();
 }
 
 renderAll();

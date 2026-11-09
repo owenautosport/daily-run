@@ -42,6 +42,9 @@
     <section id="tab-history" class="tab" hidden></section>
 
     <section id="tab-settings" class="tab" hidden>
+      <h2>Games in your run</h2>
+      <p class="muted">NYT games won't load inside another site, so they open in a new tab. The rest play right here.</p>
+      <div id="game-picker" class="picker"></div>
       <h2>Your data</h2>
       <p class="muted">Stats are saved in this browser only. Export a backup to move them to another device.</p>
       <div class="row">
@@ -52,6 +55,22 @@
       <button id="reset" class="danger">Delete all stats</button>
     </section>
   </main>
+
+  <div id="player" class="player" hidden>
+    <header class="player-bar">
+      <button id="player-back" class="ghost" aria-label="Back to the run">← Run</button>
+      <div class="player-title"><b id="player-name"></b><small id="player-step" class="muted"></small></div>
+      <a id="player-newtab" class="ghost" target="_blank" rel="noopener" title="Open in a new tab" aria-label="Open in a new tab">↗</a>
+      <button id="player-log" class="primary">Log result</button>
+    </header>
+    <div id="player-paste" class="player-paste" hidden>
+      <p class="muted">Tap the game's <b>Share</b> button, then paste here.</p>
+      <textarea id="player-text" placeholder="Paste the share text"></textarea>
+      <div class="row"><button id="player-save" class="primary">Save</button></div>
+      <p id="player-error" class="error" hidden></p>
+    </div>
+    <iframe id="player-frame" allow="clipboard-write; fullscreen; autoplay" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
