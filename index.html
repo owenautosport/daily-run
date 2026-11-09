@@ -35,7 +35,7 @@
       </div>
       <button id="start-run" class="primary big"></button>
       <ol id="game-list" class="game-list"></ol>
-      <p class="hint muted">Play the game, tap its <b>Share</b> button, come back and paste. You can paste anywhere on this page and it'll work out which game it was.</p>
+      <p id="today-hint" class="hint muted">Play the game, tap its <b>Share</b> button, come back and paste. You can paste anywhere on this page and it'll work out which game it was.</p>
     </section>
 
     <section id="tab-stats" class="tab" hidden></section>
@@ -43,8 +43,9 @@
 
     <section id="tab-settings" class="tab" hidden>
       <h2>Games in your run</h2>
-      <p class="muted">NYT games won't load inside another site, so they open in a new tab. The rest play right here.</p>
+      <p id="games-note" class="muted">NYT games won't load inside another site, so they open in a new tab. The rest play right here.</p>
       <div id="game-picker" class="picker"></div>
+      <label id="auto-open-row" class="pick" hidden><input id="auto-open" type="checkbox"><span><b>Start the run automatically</b><small class="muted">Opens your first unplayed game once a day, when you start the browser or come back to the computer</small></span></label>
       <h2>Your data</h2>
       <p class="muted">Stats are saved in this browser only. Export a backup to move them to another device.</p>
       <div class="row">

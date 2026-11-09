@@ -1,0 +1,19 @@
+:root { color-scheme: light dark; --bg: #f6f3ec; --ink: #1d1b16; --muted: #6f6a5e; --line: #e2dccd; --green: #6aaa64; --danger: #b3412e; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1f1d17; --ink: #f1ece0; --muted: #a39d8e; --line: #34312a; --danger: #e0715d; } }
+body { margin: 0; width: 280px; padding: 14px; background: var(--bg); color: var(--ink); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+header { display: flex; justify-content: space-between; align-items: baseline; }
+header b { font-size: 16px; }
+.muted { color: var(--muted); }
+.bar { height: 6px; border-radius: 9px; background: var(--line); margin: 10px 0 12px; overflow: hidden; }
+.bar span { display: block; height: 100%; width: 0; background: var(--green); }
+.go { width: 100%; border: 0; border-radius: 999px; padding: 10px; font: inherit; font-weight: 600; cursor: pointer; background: var(--ink); color: var(--bg); }
+.go:disabled { opacity: .5; cursor: default; }
+ul { list-style: none; margin: 12px 0; padding: 0; }
+li { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+li:last-child { border: 0; }
+li .mark { width: 18px; text-align: center; color: var(--muted); }
+li.won .mark { color: var(--green); }
+li.lost .mark { color: var(--danger); }
+li .name { flex: 1; }
+li .res { color: var(--muted); }
+a { color: var(--muted); font-size: 13px; }

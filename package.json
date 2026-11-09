@@ -1,1 +1,9 @@
-{"name":"daily-run","private":true,"type":"module","scripts":{"test":"node --test test/"}}
+{
+  "name": "daily-run",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "build:ext": "bash scripts/build-extension.sh"
+  }
+}

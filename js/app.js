@@ -1,61 +1,28 @@
 import { GAMES, byId, detectGame } from './games.js';
 import { gameStats, fullRunStreak, isoDate } from './stats.js';
+import * as core from './core.js';
+import { loadState, saveState, onExternalChange, isExtension } from './store.js';
 
-const KEY = 'dailyrun.v1';
 const $ = (s) => document.querySelector(s);
 
 // ---------- storage ----------
-function load() {
-  try {
-    const data = JSON.parse(localStorage.getItem(KEY));
-    if (data && Array.isArray(data.results)) return data;
-  } catch {}
-  return { results: [] };
-}
-let state = load();
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
-}
+let state = await loadState();
+const save = () => saveState(state);
+onExternalChange((s) => { state = s; renderAll(); });
 
 const today = () => isoDate();
-const resultFor = (gameId, date) => state.results.find((r) => r.game === gameId && r.date === date);
-
-// Which games are in your run (Settings). Default: all of them.
-const activeGames = () => (state.enabled ? GAMES.filter((g) => state.enabled.includes(g.id)) : GAMES);
-
-// Work out which day a result belongs to, so pasting yesterday's game late
-// still lands on yesterday. Some games put the date in the share text; for the
-// rest we count back from today's puzzle number.
-function dateForResult(game, parsed) {
-  if (parsed.date) {
-    const offset = Math.round((new Date(today()) - new Date(parsed.date)) / 86400000);
-    return { date: offset < 0 ? today() : parsed.date, offset };
-  }
-  if (game.todaysPuzzle && parsed.puzzle != null) {
-    const offset = game.todaysPuzzle(new Date()) - parsed.puzzle;
-    const d = new Date();
-    d.setDate(d.getDate() - Math.max(0, offset));
-    return { date: isoDate(d), offset };
-  }
-  return { date: today(), offset: 0 };
-}
+const resultFor = (gameId, date) => core.resultFor(state, gameId, date);
+const activeGames = () => core.activeGames(state);
 
 function record(game, parsed) {
-  const { date, offset } = dateForResult(game, parsed);
-  if (offset > 7 || offset < -1) {
-    if (!confirm(`That ${game.name} result is from ${date}, not today. Save it anyway?`)) return false;
+  const { kind, date } = core.classify(state, game, parsed);
+  if (kind === 'duplicate') {
+    toast(`Already saved ${game.name} for ${date === today() ? 'today' : date}`);
+    return true;
   }
-  const existing = resultFor(game.id, date);
-  if (existing) {
-    if (existing.score === parsed.score && existing.grid === parsed.grid) {
-      toast(`Already saved ${game.name} for ${date === today() ? 'today' : date}`);
-      return true;
-    }
-    if (!confirm(`You already have a ${game.name} result for ${date}. Replace it?`)) return false;
-    state.results = state.results.filter((r) => r !== existing);
-  }
-  const { date: _ignored, ...rest } = parsed;
-  state.results.push({ game: game.id, date, savedAt: new Date().toISOString(), ...rest });
+  if (kind === 'old' && !confirm(`That ${game.name} result is from ${date}, not today. Save it anyway?`)) return false;
+  if (kind === 'conflict' && !confirm(`You already have a ${game.name} result for ${date}. Replace it?`)) return false;
+  state = core.withResult(state, game, parsed, date);
   save();
   toast(`${game.name}: ${game.describe(parsed)}${date !== today() ? ` (saved to ${date})` : ''}`);
   return true;
@@ -85,13 +52,20 @@ function toast(msg) {
 const openPaste = new Set(); // game ids whose paste box is expanded
 
 function openGame(game) {
+  // In the extension, go to the game in this tab; the extension's panel on the
+  // game page logs the result and brings you on to the next one.
+  if (isExtension) {
+    location.href = game.url;
+    return;
+  }
   if (game.embed) return openPlayer(game);
   window.open(game.url, '_blank', 'noopener');
   openPaste.add(game.id);
   renderToday();
 }
 
-const nextUnplayed = () => activeGames().find((g) => !resultFor(g.id, today()));
+const nextUnplayed = () => core.nextUnplayed(state, today());
+const playsHere = (game) => game.embed && !isExtension;
 
 // ---------- In-page player (for games that allow being embedded) ----------
 let playing = null;
@@ -193,16 +167,16 @@ function renderToday() {
 
     const actions = el('div', { class: 'game-actions' });
     if (!r) {
-      actions.append(el('button', { class: 'primary', onclick: () => openGame(game) }, game.embed ? 'Play here' : 'Play ↗'));
-      if (!game.embed) {
+      actions.append(el('button', { class: 'primary', onclick: () => openGame(game) }, isExtension ? 'Play' : game.embed ? 'Play here' : 'Play ↗'));
+      if (!game.embed && !isExtension) {
         actions.append(el('button', {
           class: 'secondary',
           onclick: () => { openPaste.has(game.id) ? openPaste.delete(game.id) : openPaste.add(game.id); renderToday(); },
         }, 'Paste result'));
       }
     } else {
-      actions.append(game.embed
-        ? el('button', { class: 'secondary', onclick: () => openPlayer(game) }, 'Open')
+      actions.append(playsHere(game) || isExtension
+        ? el('button', { class: 'secondary', onclick: () => (isExtension ? openGame(game) : openPlayer(game)) }, 'Open')
         : el('a', { class: 'secondary', href: game.url, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, 'Open ↗'));
     }
 
@@ -247,7 +221,7 @@ function renderToday() {
     btn.onclick = null;
   } else if (next) {
     btn.disabled = false;
-    btn.textContent = `${done === 0 ? 'Start today\'s run' : 'Next up'} → ${next.name}${next.embed ? '' : ' ↗'}`;
+    btn.textContent = `${done === 0 ? 'Start today\'s run' : 'Next up'} → ${next.name}${next.embed || isExtension ? '' : ' ↗'}`;
     btn.onclick = () => openGame(next);
   } else {
     btn.disabled = true;
@@ -413,7 +387,7 @@ function renderGamePicker() {
             renderAll();
           },
         }),
-        el('span', {}, el('b', {}, g.name), el('small', { class: 'muted' }, g.embed ? 'Plays here' : 'Opens a new tab')),
+        el('span', {}, el('b', {}, g.name), el('small', { class: 'muted' }, isExtension ? 'Logged automatically' : g.embed ? 'Plays here' : 'Opens a new tab')),
       ),
     ),
   );
@@ -460,11 +434,20 @@ function showTab(name) {
 document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 
 function renderAll() {
+  if (isExtension) $('#auto-open').checked = state.autoOpen !== false;
   $('#today-label').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
   renderToday();
   renderStats();
   renderHistory();
   renderGamePicker();
+}
+
+if (isExtension) {
+  $('#today-hint').textContent = 'Play each game and press its Share button when you finish. Daily Run logs the result and takes you to the next game.';
+  $('#games-note').textContent = 'Each game opens in this tab. When you press a game’s Share button, Daily Run logs your result and moves you on.';
+  const row = $('#auto-open-row');
+  row.hidden = false;
+  $('#auto-open').onchange = (e) => { state = { ...state, autoOpen: e.target.checked }; save(); };
 }
 
 renderAll();
