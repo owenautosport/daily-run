@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Run</title>
+  <meta name="description" content="Work through the daily puzzle games and track your stats.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='8' y='8' width='38' height='38' rx='6' fill='%236aaa64'/><rect x='54' y='8' width='38' height='38' rx='6' fill='%23c9b458'/><rect x='8' y='54' width='38' height='38' rx='6' fill='%23b0c4ef'/><rect x='54' y='54' width='38' height='38' rx='6' fill='%23ba81c5'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Daily Run</h1>
+      <p id="today-label" class="muted"></p>
+    </div>
+    <div class="run-streak" id="run-streak" title="Days in a row you've played every game"></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="today" aria-selected="true">Today</button>
+    <button role="tab" data-tab="stats" aria-selected="false">Stats</button>
+    <button role="tab" data-tab="history" aria-selected="false">History</button>
+    <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+  </nav>
+
+  <main>
+    <section id="tab-today" class="tab">
+      <div class="progress">
+        <div class="progress-bar"><span id="progress-fill"></span></div>
+        <span id="progress-text" class="muted"></span>
+      </div>
+      <button id="start-run" class="primary big"></button>
+      <ol id="game-list" class="game-list"></ol>
+      <p class="hint muted">Play the game, tap its <b>Share</b> button, come back and paste. You can paste anywhere on this page and it'll work out which game it was.</p>
+    </section>
+
+    <section id="tab-stats" class="tab" hidden></section>
+    <section id="tab-history" class="tab" hidden></section>
+
+    <section id="tab-settings" class="tab" hidden>
+      <h2>Your data</h2>
+      <p class="muted">Stats are saved in this browser only. Export a backup to move them to another device.</p>
+      <div class="row">
+        <button id="export" class="secondary">Export backup</button>
+        <label class="secondary file-btn">Import backup<input id="import" type="file" accept="application/json" hidden></label>
+      </div>
+      <h2>Reset</h2>
+      <button id="reset" class="danger">Delete all stats</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
