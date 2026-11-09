@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+node scripts/manifest-matches.mjs
 rm -rf extension/lib
 mkdir -p extension/lib dist
 cp js/games.js js/stats.js js/core.js js/app.js extension/lib/

@@ -34,7 +34,8 @@
   const share = navigator.share?.bind(navigator);
   if (share) {
     navigator.share = function (data) {
-      send(data?.text);
+      // Some games (the NYT Mini) share only a title and a link with the score in it.
+      send([data?.title, data?.text, data?.url].filter(Boolean).join('\n'));
       return share(data);
     };
   }

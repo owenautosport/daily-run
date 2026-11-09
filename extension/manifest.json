@@ -3,50 +3,108 @@
   "name": "Daily Run",
   "version": "1.0.0",
   "description": "Takes you through the daily puzzle games, logs each result when you press Share, and tracks your stats.",
-  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
   "action": {
     "default_title": "Daily Run",
     "default_popup": "popup.html",
-    "default_icon": { "16": "icons/16.png", "32": "icons/32.png" }
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
   },
-  "background": { "service_worker": "background.js", "type": "module" },
-  "permissions": ["storage", "idle"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "idle"
+  ],
   "content_scripts": [
     {
       "matches": [
-        "https://www.nytimes.com/games/wordle/*",
+        "https://www.nytimes.com/games/wordle*",
         "https://www.nytimes.com/games/connections*",
+        "https://www.nytimes.com/games/strands*",
+        "https://www.nytimes.com/crosswords/game/mini*",
+        "https://krillion.io/*",
+        "https://minecraftle.zachmanson.com/*",
+        "https://www.flagle.io/*",
+        "https://travle.earth/*",
+        "https://loldle.net/*",
         "https://worldle.teuteuf.fr/*",
         "https://globle-game.com/*",
         "https://framed.wtf/*",
-        "https://nerdlegame.com/*"
+        "https://spotle.io/*",
+        "https://www.minutecryptic.com/*",
+        "https://metazooa.com/*",
+        "https://unwordle.online/*",
+        "https://nerdlegame.com/*",
+        "https://costcodle.com/*",
+        "https://squirdle.fireblend.com/*"
       ],
-      "js": ["hook.js"],
+      "js": [
+        "hook.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
       "matches": [
-        "https://www.nytimes.com/games/wordle/*",
+        "https://www.nytimes.com/games/wordle*",
         "https://www.nytimes.com/games/connections*",
+        "https://www.nytimes.com/games/strands*",
+        "https://www.nytimes.com/crosswords/game/mini*",
+        "https://krillion.io/*",
+        "https://minecraftle.zachmanson.com/*",
+        "https://www.flagle.io/*",
+        "https://travle.earth/*",
+        "https://loldle.net/*",
         "https://worldle.teuteuf.fr/*",
         "https://globle-game.com/*",
         "https://framed.wtf/*",
-        "https://nerdlegame.com/*"
+        "https://spotle.io/*",
+        "https://www.minutecryptic.com/*",
+        "https://metazooa.com/*",
+        "https://unwordle.online/*",
+        "https://nerdlegame.com/*",
+        "https://costcodle.com/*",
+        "https://squirdle.fireblend.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/games.js", "lib/stats.js"],
+      "resources": [
+        "lib/games.js",
+        "lib/stats.js"
+      ],
       "matches": [
         "https://www.nytimes.com/*",
+        "https://krillion.io/*",
+        "https://minecraftle.zachmanson.com/*",
+        "https://www.flagle.io/*",
+        "https://travle.earth/*",
+        "https://loldle.net/*",
         "https://worldle.teuteuf.fr/*",
         "https://globle-game.com/*",
         "https://framed.wtf/*",
-        "https://nerdlegame.com/*"
+        "https://spotle.io/*",
+        "https://www.minutecryptic.com/*",
+        "https://metazooa.com/*",
+        "https://unwordle.online/*",
+        "https://nerdlegame.com/*",
+        "https://costcodle.com/*",
+        "https://squirdle.fireblend.com/*"
       ]
     }
   ]

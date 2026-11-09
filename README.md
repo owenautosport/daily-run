@@ -7,11 +7,11 @@ Takes you through the daily puzzle games one by one and keeps your stats.
 3. Log it: **Log result** in the player bar, or paste anywhere on the page. The site reads your score from the share text.
 4. It moves on to the next game.
 
-Worldle, Globle, Framed and Nerdle play inside the site, full screen, and each one leads straight into the next. Wordle and Connections open in a new tab, because the NYT blocks its games being shown inside other sites.
+Games that allow it (Worldle, Globle, Framed, Spotle, Minute Cryptic, Metazooa, Unwordle, Nerdle, Costcodle, Squirdle) play inside the site, full screen, one after another. The rest open in a new tab, because they block being shown inside other sites.
 
 Stats (played, win %, streak, best streak, score distribution, last 28 days, and a "full run" streak for days you played every game) are kept in your browser's `localStorage`. To move them to another device, use Settings → Export / Import.
 
-Games: Wordle, Connections, Worldle, Globle, Framed, Nerdle. Pick which are in your run under Settings.
+Games (19): Wordle, Connections, Strands, The Mini, Krillion, Minecraftle, Flagle, Travle, Loldle, Worldle, Globle, Framed, Spotle, Minute Cryptic, Metazooa, Unwordle, Nerdle, Costcodle, Squirdle. Pick which are in your run under Settings.
 
 ## Browser extension (Brave / Chrome)
 
