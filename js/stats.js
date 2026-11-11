@@ -54,14 +54,20 @@ export function gameStats(game, results, today = isoDate()) {
   };
 }
 
-// Days on which every game in the run was played.
-export function fullRunStreak(gameIds, results, today = isoDate()) {
+// Days on which every game in the run was played (or skipped on purpose, as
+// long as at least one game was actually played that day).
+// skipped: { 'YYYY-MM-DD': [gameId, ...] }
+export function fullRunStreak(gameIds, results, today = isoDate(), skipped = {}) {
   const byDay = new Map();
   for (const r of results) {
     if (!byDay.has(r.date)) byDay.set(r.date, new Set());
     byDay.get(r.date).add(r.game);
   }
-  const complete = (d) => gameIds.every((id) => byDay.get(d)?.has(id));
+  const complete = (d) => {
+    const played = byDay.get(d);
+    const skips = skipped[d] || [];
+    return !!played && gameIds.some((id) => played.has(id)) && gameIds.every((id) => played.has(id) || skips.includes(id));
+  };
   let n = 0;
   let day = complete(today) ? today : prevDay(today);
   while (complete(day)) {

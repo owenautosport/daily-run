@@ -75,6 +75,8 @@ button { font: inherit; cursor: pointer; }
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px;
 }
 .game.done { border-color: color-mix(in srgb, var(--green) 55%, var(--line)); }
+.game.skipped { opacity: .6; }
+.game-actions .ghost.skip { color: var(--muted); padding: 8px 10px; font-size: .9rem; }
 .game.lost { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
 .game-head { display: flex; align-items: center; gap: 12px; }
 .game-num {

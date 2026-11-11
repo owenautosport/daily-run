@@ -7,6 +7,9 @@ header b { font-size: 16px; }
 .bar { height: 6px; border-radius: 9px; background: var(--line); margin: 10px 0 12px; overflow: hidden; }
 .bar span { display: block; height: 100%; width: 0; background: var(--green); }
 .go { width: 100%; border: 0; border-radius: 999px; padding: 10px; font: inherit; font-weight: 600; cursor: pointer; background: var(--ink); color: var(--bg); }
+.skip { width: 100%; margin-top: 6px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 4px; }
+.skip:hover { color: var(--ink); }
+li.skipped { opacity: .55; }
 .go:disabled { opacity: .5; cursor: default; }
 ul { list-style: none; margin: 12px 0; padding: 0; }
 li { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }

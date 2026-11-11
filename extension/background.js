@@ -12,9 +12,10 @@ function statusFor(state, gameId) {
   return {
     date,
     total: games.length,
-    done: games.filter((g) => core.resultFor(state, g.id, date)).length,
+    done: games.filter((g) => core.isDone(state, g.id, date)).length,
     inRun: gameId ? games.some((g) => g.id === gameId) : false,
     logged: r ? byId[gameId].describe(r) : null,
+    skipped: gameId ? core.isSkipped(state, gameId, date) : false,
     next: next ? { id: next.id, name: next.name, url: next.url } : null,
   };
 }
@@ -35,6 +36,15 @@ async function handle(msg, sender) {
         await saveState(state);
       }
       return { kind, date, status: statusFor(state, game.id) };
+    }
+
+    case 'skip': {
+      // Skip a game for today (msg.gameId), or whichever game is next.
+      const id = msg.gameId || core.nextUnplayed(state)?.id;
+      if (!id) return statusFor(state, null);
+      state = core.withSkip(state, id, isoDate(), msg.undo ? false : true);
+      await saveState(state);
+      return statusFor(state, id);
     }
 
     case 'openStats':

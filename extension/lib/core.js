@@ -11,8 +11,25 @@ export const activeGames = (state) =>
 export const resultFor = (state, gameId, date) =>
   state.results.find((r) => r.game === gameId && r.date === date);
 
+export const isSkipped = (state, gameId, date) => !!state.skipped?.[date]?.includes(gameId);
+
+// "Done" for today's run means played or skipped.
+export const isDone = (state, gameId, date) => !!resultFor(state, gameId, date) || isSkipped(state, gameId, date);
+
 export const nextUnplayed = (state, date = isoDate()) =>
-  activeGames(state).find((g) => !resultFor(state, g.id, date));
+  activeGames(state).find((g) => !isDone(state, g.id, date));
+
+// Returns a new state with the game skipped (on = true) or un-skipped for that
+// day. Old skip records (over 60 days) are dropped to keep storage small.
+export function withSkip(state, gameId, date, on = true) {
+  const cutoff = isoDate(new Date(Date.now() - 60 * 86400000));
+  const skipped = Object.fromEntries(Object.entries(state.skipped || {}).filter(([d]) => d >= cutoff));
+  const day = new Set(skipped[date] || []);
+  on ? day.add(gameId) : day.delete(gameId);
+  if (day.size) skipped[date] = [...day];
+  else delete skipped[date];
+  return { ...state, skipped };
+}
 
 // Work out which day a result belongs to, so a game finished after midnight, or
 // pasted late, still lands on its own day. Some games put the date in the share

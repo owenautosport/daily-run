@@ -38,7 +38,8 @@
         font: inherit; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1px solid #34312a;
       }
       button.go { background: #f1ece0; color: #15140f; border-color: #f1ece0; flex: 1; white-space: nowrap; }
-      button.stay { background: none; color: #f1ece0; }
+      button.stay, button.skip { background: none; color: #f1ece0; }
+      button.skip { font: inherit; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1px solid #34312a; }
       .hidden { display: none !important; }
     </style>
     <div class="card">
@@ -53,6 +54,7 @@
         <div class="row">
           <button class="go hidden"></button>
           <button class="stay hidden">Stay</button>
+          <button class="skip hidden" title="Skip this game today">Skip →</button>
         </div>
       </div>
     </div>`;
@@ -67,13 +69,15 @@
 
   function show(status, note) {
     stopCountdown();
-    const { done, total, logged, next, inRun } = status;
+    const { done, total, logged, next, inRun, skipped } = status;
     $('.count').textContent = `${done}/${total}`;
     $('.bar span').style.width = `${total ? (done / total) * 100 : 0}%`;
     const msg = $('.msg');
     const go = $('.go');
     const stay = $('.stay');
+    const skip = $('.skip');
     stay.classList.add('hidden');
+    skip.classList.add('hidden');
     msg.replaceChildren();
 
     if (note) {
@@ -83,13 +87,22 @@
       const b = document.createElement('b');
       b.textContent = `✓ ${here.name}: ${logged}`;
       msg.prepend(b, document.createElement('br'));
+    } else if (skipped) {
+      msg.append(`You skipped ${here.name} today. Press Share if you play it after all.`);
     } else if (inRun) {
       msg.append(`Press ${here.name}'s Share button when you finish and it's logged automatically.`);
+      skip.classList.remove('hidden');
+      skip.onclick = async () => {
+        const st = await ask({ type: 'skip', gameId: here.id });
+        if (!st) return;
+        if (st.next) location.href = st.next.url;
+        else show(st);
+      };
     } else {
       msg.append(`${here.name} isn't in your run. Turn it on in Daily Run's settings.`);
     }
 
-    if (next && (logged || !inRun)) {
+    if (next && (logged || skipped || !inRun)) {
       go.textContent = `Next: ${next.name} →`;
       go.onclick = () => { location.href = next.url; };
       go.classList.remove('hidden');

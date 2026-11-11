@@ -110,6 +110,18 @@ function afterPlayerResult() {
   }
 }
 
+function setSkipped(game, on) {
+  state = core.withSkip(state, game.id, today(), on);
+  save();
+  toast(on ? `Skipped ${game.name} for today` : `${game.name} is back in today's run`);
+}
+
+function skipPlaying() {
+  const game = playing;
+  setSkipped(game, true);
+  afterPlayerResult();
+}
+
 function logFromText(text) {
   const game = playing;
   const parsed = game.parse(text);
@@ -141,6 +153,7 @@ async function logResult() {
 
 $('#player-back').onclick = closePlayer;
 $('#player-log').onclick = logResult;
+$('#player-skip').onclick = skipPlaying;
 $('#player-save').onclick = () => {
   const text = $('#player-text').value;
   if (!logFromText(text)) {
@@ -162,11 +175,14 @@ function renderToday() {
 
   games.forEach((game, i) => {
     const r = resultFor(game.id, d);
-    if (r) done++;
-    const li = el('li', { class: `game${r ? (r.won ? ' done' : ' lost') : ''}` });
+    const skipped = !r && core.isSkipped(state, game.id, d);
+    if (r || skipped) done++;
+    const li = el('li', { class: `game${r ? (r.won ? ' done' : ' lost') : skipped ? ' skipped' : ''}` });
 
     const actions = el('div', { class: 'game-actions' });
-    if (!r) {
+    if (skipped) {
+      actions.append(el('button', { class: 'secondary', onclick: () => { setSkipped(game, false); renderAll(); } }, 'Undo skip'));
+    } else if (!r) {
       actions.append(el('button', { class: 'primary', onclick: () => openGame(game) }, isExtension ? 'Play' : game.embed ? 'Play here' : 'Play ↗'));
       if (!game.embed && !isExtension) {
         actions.append(el('button', {
@@ -174,6 +190,7 @@ function renderToday() {
           onclick: () => { openPaste.has(game.id) ? openPaste.delete(game.id) : openPaste.add(game.id); renderToday(); },
         }, 'Paste result'));
       }
+      actions.append(el('button', { class: 'ghost skip', title: `Skip ${game.name} today`, onclick: () => { openPaste.delete(game.id); setSkipped(game, true); renderAll(); } }, 'Skip'));
     } else {
       actions.append(playsHere(game) || isExtension
         ? el('button', { class: 'secondary', onclick: () => (isExtension ? openGame(game) : openPlayer(game)) }, 'Open')
@@ -183,10 +200,10 @@ function renderToday() {
     const number = game.todaysPuzzle ? `#${game.todaysPuzzle(new Date())} · ` : '';
     li.append(
       el('div', { class: 'game-head' },
-        el('div', { class: 'game-num' }, r ? (r.won ? '✓' : '✕') : String(i + 1)),
+        el('div', { class: 'game-num' }, r ? (r.won ? '✓' : '✕') : skipped ? '–' : String(i + 1)),
         el('div', { class: 'game-title' },
           el('h3', {}, game.name),
-          el('p', { class: 'muted' }, r ? game.describe(r) : `${number}${game.blurb}`),
+          el('p', { class: 'muted' }, r ? game.describe(r) : skipped ? 'Skipped today' : `${number}${game.blurb}`),
         ),
         actions,
       ),
@@ -229,7 +246,7 @@ function renderToday() {
     btn.onclick = null;
   }
 
-  const rs = fullRunStreak(games.map((g) => g.id), state.results);
+  const rs = fullRunStreak(games.map((g) => g.id), state.results, today(), state.skipped || {});
   $('#run-streak').replaceChildren(String(rs), el('small', {}, rs === 1 ? 'day full run' : 'days full run'));
 }
 
